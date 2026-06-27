@@ -1,0 +1,156 @@
+name: Build & publish
+
+# Builds the flatpak bundle and publishes it to a GitHub-Pages-hosted OSTree
+# repository, which users can add directly with:
+#   flatpak remote-add --user --no-gpg-verify zcode https://sliced-paraiba.github.io/zcode-flatpak/repo
+#   flatpak install --user zcode ai.zcode.ZCode
+#
+# Triggers on every push to the manifest/appdata, nightly, and manually.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ai.zcode.ZCode.yaml
+      - ai.zcode.ZCode.appdata.xml
+      - .github/workflows/build.yml
+  schedule:
+    # 04:15 UTC daily — rebuild even if nothing changed (keeps runtime fresh).
+    - cron: "15 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install flatpak + flatpak-builder
+        run: |
+          set -euo pipefail
+          sudo add-apt-repository -y ppa:flatpak/stable || true
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder ostree
+          flatpak --version
+          flatpak-builder --version
+
+      - name: Add flathub remote & install deps
+        run: |
+          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y flathub \
+            org.freedesktop.Platform//25.08 \
+            org.freedesktop.Sdk//25.08
+
+      - name: Restore OSTree repo cache
+        uses: actions/cache/restore@v4
+        with:
+          path: repo
+          key: ostree-repo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ostree-repo-${{ runner.os }}-
+
+      - name: Build the flatpak
+        run: |
+          set -euo pipefail
+          # Reuse / init the published OSTree repo (archive mode for static hosting).
+          if [ ! -d repo/objects ]; then
+            ostree init --repo=repo --mode=archive-z2
+            ostree config --repo=repo set core.min-free-space-percent 0
+          fi
+          flatpak-builder \
+            --force-clean \
+            --user \
+            --install-deps-from=flathub \
+            --repo=repo \
+            build-dir ai.zcode.ZCode.yaml
+
+      - name: Build a .flatpak single-file bundle
+        run: |
+          set -euo pipefail
+          ver="$(grep -oE 'releases/[0-9.]+' ai.zcode.ZCode.yaml | head -1 | cut -d/ -f2)"
+          flatpak build-bundle repo "ZCode-${ver}-x86_64.flatpak" ai.zcode.ZCode stable
+          echo "VERSION=$ver" >> "$GITHUB_ENV"
+          ls -la "ZCode-${ver}-x86_64.flatpak"
+
+      - name: Generate AppStream media & repo index
+        run: |
+          set -euo pipefail
+          # flatpak builds already update the AppStream data in the repo.
+          # Refresh the static summary so clients see the latest build.
+          flatpak build-update-repo --prune --prune-depth=14 repo || true
+
+      - name: Save OSTree repo cache
+        uses: actions/cache/save@v4
+        with:
+          path: repo
+          key: ostree-repo-${{ runner.os }}-${{ github.sha }}
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZCode-${{ env.VERSION }}-x86_64.flatpak
+          path: ZCode-*-x86_64.flatpak
+          if-no-files-found: error
+
+      # ----- Publish the OSTree repo to GitHub Pages -----
+      - name: Prepare Pages payload
+        run: |
+          set -euo pipefail
+          mkdir -p pages
+          cp -a repo pages/repo
+          # Landing page with copy-paste install instructions.
+          cat > pages/index.html <<HTML
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>ZCode Flatpak</title>
+          <style>
+            body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#222}
+            pre{background:#f4f4f5;padding:.8rem;border-radius:6px;overflow-x:auto}
+            code{background:#f4f4f5;padding:.1rem .3rem;border-radius:3px}
+            a{color:#0969da}
+          </style></head><body>
+          <h1>ZCode Flatpak</h1>
+          <p>Unofficial Flatpak packaging of <a href="https://zcode.z.ai">ZCode</a>
+          (the GLM-5.2 harness from Z.ai), published as a self-hosted Flatpak repo.</p>
+          <h2>Install</h2>
+          <pre>flatpak remote-add --user --no-gpg-verify zcode \\
+    https://sliced-paraiba.github.io/zcode-flatpak/repo
+          flatpak install --user zcode ai.zcode.ZCode</pre>
+          <p>Then launch <strong>ZCode</strong> from your app menu, or:</p>
+          <pre>flatpak run ai.zcode.ZCode</pre>
+          <h2>Update</h2>
+          <pre>flatpak update ai.zcode.ZCode</pre>
+          <p>This repo rebuilds automatically when upstream publishes a new ZCode release.</p>
+          <p><small>This is an unofficial packaging. ZCode is © Z.ai.</small></p>
+          </body></html>
+          HTML
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

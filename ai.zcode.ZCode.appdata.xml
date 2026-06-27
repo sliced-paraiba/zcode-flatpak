@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ai.zcode.ZCode</id>
+
+  <name>ZCode</name>
+  <summary>Simple, fast, vibe-ready — the official harness for GLM-5.2</summary>
+  <summary xml:lang="zh_CN">简单、迅捷、氛围十足 — GLM-5.2 官方适配开发工具</summary>
+
+  <developer id="ai.z.ai">
+    <name>Z.ai</name>
+  </developer>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <!-- ZCode itself is distributed as freeware; no source license file is shipped upstream. -->
+  <project_license>LicenseRef-proprietary</project_license>
+
+  <url type="homepage">https://zcode.z.ai</url>
+  <url type="help">https://zcode.z.ai/en/docs</url>
+  <url type="bugtracker">https://github.com/sliced-paraiba/zcode-flatpak/issues</url>
+
+  <description>
+    <p>
+      ZCode is an AI coding harness from Z.ai, built around the GLM-5.2 model family.
+      It combines powerful AI agents with your existing toolchain so you can plan,
+      code, review and ship without leaving your flow.
+    </p>
+    <p>
+      This is an unofficial Flatpak packaging of ZCode for Linux. The upstream
+      application binary is provided as-is by Z.ai; this repository only wraps it
+      for installation under Flatpak.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">ai.zcode.ZCode.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>ZCode main window</caption>
+      <image>https://zcode.z.ai/og-image.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Development</category>
+    <category>IDE</category>
+    <category>Utility</category>
+  </categories>
+
+  <releases>
+    <release version="3.1.8" date="2026-06-26">
+      <description>
+        <p>Improvements and fixes:</p>
+        <ul>
+          <li>Improved plan mode exit so it returns to the previously selected permission mode.</li>
+          <li>Fixed occasional freezes or duplicate prompts in search and interaction requests.</li>
+          <li>Fixed inconsistent wording in task notifications.</li>
+          <li>Fixed the sidebar upgrade flow not returning to the original workspace after closing.</li>
+          <li>Fixed chat briefly continuing to show loading after a goal completes.</li>
+          <li>Fixed terminal input sometimes duplicating spaces.</li>
+          <li>Fixed some remote capabilities not taking effect promptly after app updates.</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+
+  <update_contact>sliced-paraiba@users.noreply.github.com</update_contact>
+</component>

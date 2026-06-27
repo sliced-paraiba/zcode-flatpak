@@ -1,0 +1,16 @@
+# Build artifacts
+.build/
+.flatpak-builder/
+build-dir/
+repo/
+pages/
+*.flatpak
+*.flatpak.bundle
+ZCode.deb
+unpacked/
+all-versions.txt
+
+# Editor / OS
+*.swp
+.DS_Store
+*~

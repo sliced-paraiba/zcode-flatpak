@@ -1,0 +1,94 @@
+app-id: ai.zcode.ZCode
+branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: zcode
+rename-icon: zcode
+
+# ZCode is a prebuilt Electron app shipped as a .deb. We don't build it from
+# source; we unpack the upstream .deb and install the bundled tree into the
+# flatpak. The org.freedesktop.Platform runtime provides GTK3, NSS/NSPR, cups,
+# alsa, ATK/at-spi and the graphics stack that the bundled Electron links against.
+inherit-extensions:
+  - org.freedesktop.Platform.GL
+  - org.freedesktop.Platform.VulkanLayer
+
+finish-args:
+  # X11 + Wayland rendering
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  # Network access (talks to z.ai / GLM APIs)
+  - --share=network
+  # PulseAudio / PipeWire audio
+  - --socket=pulseaudio
+  # Notifications, secrets (libsecret keyring for credentials) and status notifier
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.kde.kwalletd5
+  - --talk-name=org.kde.kwalletd6
+  # File access: this is a developer tool that edits code, so broad home access is needed.
+  - --filesystem=home
+  # ZCode can spawn sub-processes; allow talking to the session portal bus.
+  - --talk-name=org.freedesktop.Flatpak
+  # Own its well-known name (status notifier item / app indicator)
+  - --own-name=org.kde.StatusNotifierItem-2-1
+  - --own-name=org.kde.StatusNotifierItem.*
+
+modules:
+  - name: zcode
+    buildsystem: simple
+    sources:
+      - type: file
+        url: https://cdn-zcode.z.ai/zcode/electron/releases/3.1.8/ZCode-3.1.8-linux-x64.deb
+        sha256: 2d8cc45f241fb58eba421e4204d24c934b408006667ac12bb63e1627f5409a2f
+        only-arches:
+          - x86_64
+        dest-filename: ZCode.deb
+      - type: file
+        path: ai.zcode.ZCode.appdata.xml
+      - type: script
+        dest-filename: zcode-launcher
+        commands:
+          - exec /app/opt/ZCode/zcode "$@"
+    build-commands:
+      # Unpack the .deb (an ar archive containing data.tar.*).
+      # The data tarball uses root-relative paths (./opt/ZCode, ./usr/share/...).
+      - ar -x ZCode.deb
+      - mkdir unpacked && tar -xf data.tar.* -C unpacked 2>/dev/null || tar -xf data.tar -C unpacked
+      # Install the bundled Electron app tree
+      - install -d /app/opt
+      - cp -a unpacked/opt/ZCode /app/opt/ZCode
+      - chmod -R a+rX /app/opt/ZCode
+      # Launcher wrapper on PATH
+      - install -Dm755 zcode-launcher /app/bin/zcode
+      # Icons (flatpak caps app icons at 512x512, so skip 1024)
+      - |
+        for s in 16 24 32 48 64 128 256 512; do
+          src="unpacked/usr/share/icons/hicolor/${s}x${s}/apps/zcode.png"
+          if [ -f "$src" ]; then
+            install -Dm644 "$src" "/app/share/icons/hicolor/${s}x${s}/apps/zcode.png"
+          fi
+        done
+      # Desktop entry
+      - |
+        install -d /app/share/applications
+        cat > /app/share/applications/ai.zcode.ZCode.desktop <<'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=ZCode
+        Comment=Simple, fast, vibe-ready — the official harness for GLM-5.2
+        Comment[zh_CN]=简单、迅捷、氛围十足 — GLM-5.2 官方适配开发工具
+        Exec=zcode %U
+        Icon=zcode
+        Terminal=false
+        StartupWMClass=ZCode
+        Categories=Development;IDE;Utility;
+        MimeType=x-scheme-handler/zcode;
+        Keywords=zcode;glm;ai;code;ide;editor;
+        EOF
+      # AppData / metainfo
+      - install -Dm644 ai.zcode.ZCode.appdata.xml /app/share/appdata/ai.zcode.ZCode.appdata.xml
