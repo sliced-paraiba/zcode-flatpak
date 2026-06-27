@@ -1,13 +1,13 @@
 name: Auto-update
 
-# Polls the upstream ZCode CDN for a new Linux release. When a new version
-# appears, updates the flatpak manifest (URL + sha256), refreshes the appdata
-# <releases> section, and opens a PR / pushes a commit that triggers build.yml.
+# Polls the upstream ZCode CDN hourly for a new Linux release. When a new version
+# appears, the .github/scripts/check_update.py helper rewrites the flatpak
+# manifest (URL + sha256) and the appdata <releases> section, then commits —
+# which triggers build.yml to rebuild and republish.
 #
-# ZCode publishes an electron-builder `latest-linux.yml` per release at a stable
-# URL, which lists the version and the sha512 of every linux artifact. We use
-# the x86_64 .deb entry there, then download the .deb ourselves to compute the
-# sha256 that flatpak-builder needs (flatpak uses sha256, not sha512).
+# ZCode publishes a per-version latest-linux.yml on its CDN; the helper scrapes
+# the website (which embeds every release URL) to find the newest version, then
+# downloads the x86_64 .deb to compute the sha256 that flatpak-builder needs.
 
 on:
   schedule:
@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: auto-update
@@ -26,131 +25,24 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.bump.outputs.changed }}
-      version: ${{ steps.bump.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect upstream version
-        id: upstream
+      - name: Check for new upstream release
+        id: check
         run: |
-          set -euo pipefail
-          # The CDN exposes a per-version latest-linux.yml, but its path moves
-          # with the version. The website's changelog page links them all; the
-          # simplest stable source is the homepage, which embeds every release
-          # URL. We scrape it for the highest published version number.
-          html="$(curl -fsSL https://zcode.z.ai)"
-          # Lines look like: .../releases/3.1.8/ZCode-3.1.8-linux-x64.deb
-          echo "$html" \
-            | grep -oE '/releases/[0-9]+\.[0-9]+\.[0-9]+/' \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-            | sort -uV > all-versions.txt
-          latest="$(tail -1 all-versions.txt)"
-          echo "Detected latest upstream version: $latest"
-          echo "version=$latest" >> "$GITHUB_OUTPUT"
+          python3 .github/scripts/check_update.py | tee update.log
+          # The script's last line is "changed=true|false".
+          tail -1 update.log >> "$GITHUB_OUTPUT"
 
-      - name: Detect current version
-        id: current
+      - name: Commit bump
+        if: steps.check.outputs.changed == 'true'
         run: |
-          set -euo pipefail
-          cur="$(grep -oE 'releases/[0-9]+\.[0-9]+\.[0-9]+/' ai.zcode.ZCode.yaml | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
-          echo "Current manifest version: $cur"
-          echo "version=$cur" >> "$GITHUB_OUTPUT"
-
-      - name: Bump manifest + appdata
-        id: bump
-        run: |
-          set -euo pipefail
-          cur="${{ steps.current.outputs.version }}"
-          new="${{ steps.upstream.outputs.version }}"
-          if [ "$cur" = "$new" ]; then
-            echo "Already at $new — nothing to do."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "Bumping $cur -> $new"
-
-          base="https://cdn-zcode.z.ai/zcode/electron/releases/${new}"
-          deb_url="${base}/ZCode-${new}-linux-x64.deb"
-
-          # Download the .deb and compute the sha256 flatpak-builder requires.
-          echo "Downloading $deb_url ..."
-          curl -fsSL -o ZCode.deb "$deb_url"
-          sha256="$(sha256sum ZCode.deb | awk '{print $1}')"
-          echo "sha256=$sha256"
-
-          # Rewrite the manifest: URL and sha256 of the only file source.
-          python3 - <<PY
-          import re, pathlib
-          p = pathlib.Path("ai.zcode.ZCode.yaml")
-          t = p.read_text()
-          t = re.sub(
-              r"url: https://cdn-zcode\.z\.ai/zcode/electron/releases/[0-9.]+/ZCode-[0-9.]+-linux-x64\.deb",
-              "url: $deb_url",
-              t,
-          )
-          t = re.sub(
-              r"sha256: [0-9a-f]{64}",
-              "sha256: $sha256",
-              t,
-          )
-          p.write_text(t)
-          PY
-
-          # Refresh the <releases> section of the appdata from upstream
-          # latest-linux.yml (release date + notes), then ensure our new release
-          # is the first <release> entry.
-          yml="$(curl -fsSL "${base}/latest-linux.yml" || true)"
-          python3 - <<PY
-          import pathlib, re
-          v = "$new"
-          # Parse date and english notes out of the upstream yml best-effort.
-          date = ""
-          notes_section = ""
-          m = re.search(r"releaseDate:\s*['\"]?([^'\"\n]+)", "$yml")
-          if m:
-              date = m.group(1).strip().split("T")[0]
-          # Grab en-US block if present, else the top-level releaseNotes.
-          m = re.search(r"en-US:\s*\n\s*title:.*?\n\s*markdown:\s*\|-\n((?:\s+- .*?\n)+)", "$yml", re.S)
-          if not m:
-              m = re.search(r"releaseNotes:\s*\|-\n((?:\s+- .*?\n)+)", "$yml", re.S)
-          if m:
-              # strip leading indentation
-              lines = [ln.strip() for ln in m.group(1).strip().splitlines() if ln.strip()]
-              notes_section = "\n          ".join(lines)
-
-          release_block = f'''    <release version="{v}" date="{date}">
-      <description>
-        <p>Release {v}:</p>
-        <ul>
-          {notes_section}
-        </ul>
-      </description>
-    </release>'''
-
-          p = pathlib.Path("ai.zcode.ZCode.appdata.xml")
-          t = p.read_text()
-          # Drop any existing entry for this version first.
-          t = re.sub(r"\s*<release version=\"%s\".*?</release>\n?" % re.escape(v), "", t, flags=re.S)
-          # Insert right after the opening <releases> tag.
-          t = re.sub(r"(<releases>\n)", r"\1" + release_block + "\n", t, count=1)
-          p.write_text(t)
-          print("appdata updated")
-          PY
-
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "version=$new" >> "$GITHUB_OUTPUT"
-
-      - name: Commit & push
-        if: steps.bump.outputs.changed == 'true'
-        run: |
-          set -euo pipefail
           git config user.name "sliced-paraiba"
           git config user.email "sliced-paraiba@users.noreply.github.com"
           git add ai.zcode.ZCode.yaml ai.zcode.ZCode.appdata.xml
-          git commit -m "chore: bump ZCode to ${{ steps.bump.outputs.version }}
+          git commit -m "chore: bump ZCode to $(grep -oE 'releases/[0-9.]+' ai.zcode.ZCode.yaml | head -1 | cut -d/ -f2)
 
           Auto-detected from the upstream CDN by the auto-update workflow.
 
