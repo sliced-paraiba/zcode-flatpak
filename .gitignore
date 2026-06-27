@@ -2,8 +2,8 @@
 .build/
 .flatpak-builder/
 build-dir/
-repo/
-pages/
+/repo/
+/pages/
 *.flatpak
 *.flatpak.bundle
 ZCode.deb
