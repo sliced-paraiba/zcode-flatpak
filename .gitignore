@@ -14,3 +14,7 @@ all-versions.txt
 *.swp
 .DS_Store
 *~
+
+# Python
+__pycache__/
+*.pyc
