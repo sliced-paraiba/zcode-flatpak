@@ -47,6 +47,14 @@
   </categories>
 
   <releases>
+    <release version="3.2.0" date="2026-06-29">
+      <description>
+        <p>Release 3.2.0:</p>
+        <ul>
+          <li>(see upstream release notes)</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.1.8" date="2026-06-26">
       <description>
         <p>Improvements and fixes:</p>
