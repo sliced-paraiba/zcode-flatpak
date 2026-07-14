@@ -10,9 +10,18 @@ rename-icon: zcode
 # source; we unpack the upstream .deb and install the bundled tree into the
 # flatpak. The org.freedesktop.Platform runtime provides GTK3, NSS/NSPR, cups,
 # alsa, ATK/at-spi and the graphics stack that the bundled Electron links against.
-inherit-extensions:
-  - org.freedesktop.Platform.GL
-  - org.freedesktop.Platform.VulkanLayer
+#
+# NOTE: do NOT use `inherit-extensions` for org.freedesktop.Platform.GL /
+# VulkanLayer here. Doing so copies the extension *definition* into the app's
+# metadata, declaring /app/lib/x86_64-linux-gnu/GL as an app-owned extension
+# mount point. At runtime flatpak tries to mkdir that path under the read-only
+# /app OSTree deployment, which fails with:
+#   bwrap: Can't mkdir parents for /app/lib/x86_64-linux-gnu/GL: Read-only file system
+#   error: ldconfig failed, exit status 256
+# The GL/Vulkan stack is provided transparently by the runtime's own
+# org.freedesktop.Platform.GL runtime-level extension (mounted into the
+# runtime's /usr, not the app's /app), which is how every Electron app on
+# Flathub gets working GPU acceleration.
 
 finish-args:
   # X11 + Wayland rendering
@@ -53,7 +62,14 @@ modules:
       - type: script
         dest-filename: zcode-launcher
         commands:
-          - exec /app/opt/ZCode/zcode "$@"
+          # Electron's bundled chrome-sandbox helper must be setuid-root
+          # (mode 4755, owned by root) to work, which is impossible inside a
+          # flatpak /app (OSTree forbids setuid binaries there). Since flatpak
+          # itself is the sandbox (bubblewrap + seccomp), disable Chromium's
+          # inner setuid sandbox. This is the standard approach for flatpaks
+          # that wrap a prebuilt Electron binary rather than building against
+          # org.electronjs.Electron2.BaseApp + zypak.
+          - exec /app/opt/ZCode/zcode --no-sandbox "$@"
     build-commands:
       # Unpack the .deb (an ar archive containing data.tar.*).
       # The data tarball uses root-relative paths (./opt/ZCode, ./usr/share/...).
