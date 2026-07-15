@@ -47,6 +47,27 @@
   </categories>
 
   <releases>
+    <release version="3.3.6" date="2026-07-15">
+      <description>
+        <p>Release 3.3.6:</p>
+        <ul>
+          <li>Optimize the Wiki generation capability of the codebase while supporting multiple languages.</li>
+          <li>Markdown tables now support better horizontal scrolling.</li>
+          <li>Fixed the exception caused by the workspace being unavailable at startup.</li>
+          <li>Fixed the residual issue after plugin installation and synchronization failure.</li>
+          <li>Fixed the issue where recovery was not possible when login authorization encountered an exception.</li>
+          <li>Fixed the issue where unclear prompts or selection loss occurred when the model was unavailable.</li>
+          <li>Fixed the issue where custom models were not retained after a restart.</li>
+          <li>Fixed abnormal quick operations such as chat search and history switching.</li>
+          <li>Fixed the issue where the file tree fails to refresh or displays incorrect status.</li>
+          <li>Fixed the scrolling direction and boundary issues of Markdown tables.</li>
+          <li>Fixed the issue where the timing and control buttons for background tasks were missing.</li>
+          <li>Fixed an issue where the SQL diff preview might crash.</li>
+          <li>Fixed the display issue of icons and title bar on Linux.</li>
+          <li>Fixed the issue where unread markers would be lost after a restart.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.3.5" date="2026-07-13">
       <description>
         <p>Release 3.3.5:</p>

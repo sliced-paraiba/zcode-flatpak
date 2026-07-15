@@ -11,7 +11,7 @@ Strategy:
   * Compare against the version currently pinned in ai.zcode.ZCode.yaml.
   * If newer: download the x86_64 .deb, compute sha256, rewrite the manifest's
     url + sha256, and refresh the appdata <releases> section from upstream's
-    latest-linux.yml.
+    per-version latest.yml.
 """
 from __future__ import annotations
 
@@ -26,10 +26,14 @@ MANIFEST = ROOT / "ai.zcode.ZCode.yaml"
 APPDATA = ROOT / "ai.zcode.ZCode.appdata.xml"
 HOMEPAGE = "https://zcode.z.ai"
 CDN = "https://cdn-zcode.z.ai/zcode/electron/releases"
+# The marketing site (zcode.z.ai) rejects non-browser User-Agents with an empty
+# body, which used to silently break version detection. The CDN itself doesn't
+# care, but we use the same UA everywhere for simplicity.
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
 def http(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "zcode-flatpak-updater"})
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.read()
 
@@ -55,7 +59,7 @@ def current_version() -> str:
 
 def sha256_of(url: str) -> str:
     h = hashlib.sha256()
-    req = urllib.request.Request(url, headers={"User-Agent": "zcode-flatpak-updater"})
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=300) as r:
         for chunk in iter(lambda: r.read(1 << 20), b""):
             h.update(chunk)
@@ -64,8 +68,10 @@ def sha256_of(url: str) -> str:
 
 def bump_manifest(new: str, deb_url: str, sha256: str) -> None:
     text = MANIFEST.read_text()
+    # Match both the legacy layout (releases/<v>/ZCode-...) and the current one
+    # (releases/<v>/linux-x64/ZCode-...).
     text = re.sub(
-        r"url: https://cdn-zcode\.z\.ai/zcode/electron/releases/[\d.]+/ZCode-[\d.]+-linux-x64\.deb",
+        r"url: https://cdn-zcode\.z\.ai/zcode/electron/releases/[\d.]+/(?:linux-x64/)?ZCode-[\d.]+-linux-x64\.deb",
         f"url: {deb_url}",
         text,
     )
@@ -76,7 +82,7 @@ def bump_manifest(new: str, deb_url: str, sha256: str) -> None:
 def refresh_appdata(version: str) -> None:
     yml = ""
     try:
-        yml = http(f"{CDN}/{version}/latest-linux.yml").decode("utf-8", "replace")
+        yml = http(f"{CDN}/{version}/linux-x64/latest.yml").decode("utf-8", "replace")
     except Exception:
         pass
 
@@ -85,16 +91,23 @@ def refresh_appdata(version: str) -> None:
     if m:
         date = m.group(1).strip().split("T")[0]
 
-    notes: list[str] = []
+    # The markdown is a YAML literal block (|-) that may contain headers and
+    # blank lines before the bullets, so capture the whole indented block and
+    # then keep only the "- " lines.
+    notes_block = ""
     mb = re.search(
-        r"en-US:\s*\n\s*title:.*?\n\s*markdown:\s*\|-\n((?:\s+- .*\n?)+)", yml, re.S
+        r"en-US:\s*\n\s*title:[^\n]*\n\s*markdown:\s*\|-\n((?:[ \t]+.*\n?)+)", yml
     )
     if not mb:
-        mb = re.search(r"releaseNotes:\s*\|-\n((?:\s+- .*\n?)+)", yml, re.S)
+        mb = re.search(r"releaseNotes:\s*\|-\n((?:[ \t]+.*\n?)+)", yml)
     if mb:
-        notes = [ln.strip().lstrip("- ").strip() for ln in mb.group(1).strip().splitlines() if ln.strip()]
+        notes_block = mb.group(1)
+    notes = [ln.strip().lstrip("- ").strip() for ln in notes_block.splitlines() if ln.strip().startswith("- ")]
 
-    li = "\n          ".join(f"<li>{n}</li>" for n in notes) if notes else "<li>(see upstream release notes)</li>"
+    def esc(s: str) -> str:
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    li = "\n          ".join(f"<li>{esc(n)}</li>" for n in notes) if notes else "<li>(see upstream release notes)</li>"
     block = (
         f'    <release version="{version}" date="{date}">\n'
         f"      <description>\n"
@@ -122,7 +135,7 @@ def main() -> int:
         print("changed=false")
         return 0
 
-    deb_url = f"{CDN}/{new}/ZCode-{new}-linux-x64.deb"
+    deb_url = f"{CDN}/{new}/linux-x64/ZCode-{new}-linux-x64.deb"
     print(f"downloading {deb_url} ...")
     digest = sha256_of(deb_url)
     print(f"sha256={digest}")
