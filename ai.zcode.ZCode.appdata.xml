@@ -47,6 +47,51 @@
   </categories>
 
   <releases>
+    <release version="3.4.2" date="2026-07-21">
+      <description>
+        <p>Release 3.4.2:</p>
+        <ul>
+          <li>Added scheduled tasks, which can automatically execute tasks according to the set schedule</li>
+          <li>Scheduled tasks support immediate execution and history viewing</li>
+          <li>Support custom recurrence rules and due dates</li>
+          <li>Scheduled tasks support configurable model, mode and reasoning intensity</li>
+          <li>Scheduled task cards can be created and viewed directly in chat</li>
+          <li>Supports auxiliary conversation, allowing you to continue asking questions on the secondary display</li>
+          <li>Support selecting text to quickly add it to the context</li>
+          <li>Smoother experience for scrolling long conversations and jumping back to the bottom</li>
+          <li>Supports displaying attachments and tool results in chat</li>
+          <li>Added codebase Wiki generation and language selection</li>
+          <li>Revamped the plugin store, with support for search and detail pages</li>
+          <li>Plugins support remote synchronization and CDN installation</li>
+          <li>Supports synchronous operations for remote workspaces and WSL</li>
+          <li>Windows: Minimize to system tray by default</li>
+          <li>The update window is now displayed independently with product branding shown</li>
+          <li>Support for Kimi K3</li>
+          <li>Added non-project conversation mode</li>
+          <li>The task sections in the sidebar are now collapsible and sortable</li>
+          <li>Markdown tables support horizontal scrolling and expanded viewing</li>
+          <li>Feishu bot supports streaming card replies</li>
+          <li>Fixed issues with mobile input, zooming, and message operations</li>
+          <li>Fixed the scrolling direction and jitter issues of Markdown tables</li>
+          <li>Fixed exceptions in plugin installation, uninstallation and remote sync</li>
+          <li>Fixed issues with remote workspace startup and plugin refresh</li>
+          <li>Fixed the recovery issue after OAuth credentials are corrupted</li>
+          <li>Fixed abnormal status issues with automatic update download, cancellation and installation</li>
+          <li>Fixed the interaction issues of title bar and settings window on Linux and Windows</li>
+          <li>Fixed issues with feedback submission timeout and duplicate tickets</li>
+          <li>Deleted tasks now stay hidden after restarting the app.</li>
+          <li>Resumed sessions now correctly preserve previous thoughts and legacy SSH task history.</li>
+          <li>Terminal tabs now close correctly when the shell exits, with accurate tab naming.</li>
+          <li>Custom slash commands are now properly saved and restored in message drafts.</li>
+          <li>Windows caption menus no longer overlap with window controls.</li>
+          <li>Output token budgets now align correctly with auto-compact settings.</li>
+          <li>Fixed an issue where the system prompt was lost mid-conversation, improving multi-turn conversation stability.</li>
+          <li>When pasting tables, plain text format is now preferred to avoid formatting issues.</li>
+          <li>Fixed an issue where historical preview images would occasionally disappear after sending an image.</li>
+          <li>Refined UI details, including fixes for missing code comment display and misaligned interface elements.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.3.6" date="2026-07-15">
       <description>
         <p>Release 3.3.6:</p>
