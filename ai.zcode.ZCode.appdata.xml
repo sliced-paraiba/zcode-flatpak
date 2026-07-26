@@ -47,6 +47,31 @@
   </categories>
 
   <releases>
+    <release version="3.5.2" date="2026-07-24">
+      <description>
+        <p>Release 3.5.2:</p>
+        <ul>
+          <li>Added built-in web app integration, allowing common webpages to be directly opened and used within the app.</li>
+          <li>Added PDF preview, supporting click-to-view and smooth zooming.</li>
+          <li>Added unified appearance settings, making interface styles more centralized and easier to find.</li>
+          <li>Added icon display for the Extension Marketplace, making browsing and identification more intuitive.</li>
+          <li>Added the generation of warehouse Knowledge Base directories and schematic diagrams for more complete content.</li>
+          <li>Improved large file reading for more stable opening of large files.</li>
+          <li>Optimized the layout of the settings page for clearer grouping of related options.</li>
+          <li>Fixed browser screenshot and restoration issues, and background pages now work properly.</li>
+          <li>Fixed the issues of flickering and blank space during PDF scaling.</li>
+          <li>Fixed issues with subtasks, conversation resumption, and lost edit targets.</li>
+          <li>Fixed the issue where plugin icons and overview loading were blocked.</li>
+          <li>Fixed the abnormal issues related to remote WSL exit, deployment and recovery.</li>
+          <li>Fixes laggy and failed issues during Windows update, shutdown and cleanup processes.</li>
+          <li>Fix issues related to model context, token budget, and streaming retries.</li>
+          <li>Fixed issues with feedback drafts, concurrent submissions, and auto-selection options.</li>
+          <li>Fixed issues with Localization and language display for a more consistent interface language.</li>
+          <li>Fixed the display misalignment issues of the status panel, to-do list and sidebar.</li>
+          <li>Fixed desktop crash reporting to facilitate faster issue localization.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.4.2" date="2026-07-21">
       <description>
         <p>Release 3.4.2:</p>
