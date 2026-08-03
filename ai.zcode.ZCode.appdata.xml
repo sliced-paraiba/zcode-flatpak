@@ -47,6 +47,61 @@
   </categories>
 
   <releases>
+    <release version="3.6.5" date="2026-07-31">
+      <description>
+        <p>Release 3.6.5:</p>
+        <ul>
+          <li>The browser toolbar now includes a more menu for quick access to additional actions.</li>
+          <li>Manual automation runs now count toward the total shown on cards.</li>
+          <li>Bot-created run results are now delivered back to you reliably.</li>
+          <li>Optimized automated task experience: added scheduled and idle views; when creating a task, the form mode is enabled by default, with support for forward/backward navigation, and drag-to-adjust for edit box height.</li>
+          <li>Added a global anti-sleep switch.</li>
+          <li>Supports project-level memory.</li>
+          <li>The model settings allow adjustment of the maximum output length.</li>
+          <li>Added Kimi K3 256K model.</li>
+          <li>Markdown images support preview and download.</li>
+          <li>The file tree hierarchy is clearer.</li>
+          <li>The question countdown timer can be disabled.</li>
+          <li>Search enhancement can be configured when a session starts.</li>
+          <li>Other officially supported models can be added from official suppliers.</li>
+          <li>Added /side and /btw commands to open the side auxiliary chat.</li>
+          <li>Manual and scheduled automation runs now stay separated in counts.</li>
+          <li>Browser actions now recover popup tabs more reliably.</li>
+          <li>Browser actions are now judged by their expected result, not just the click itself.</li>
+          <li>Popup tabs are now detected together, reducing missed popups.</li>
+          <li>Plugin loading is now more resilient when cache locks appear briefly.</li>
+          <li>The active session model no longer changes unexpectedly when reading state.</li>
+          <li>Composer config pickers now stay mutually exclusive and reset correctly across scopes.</li>
+          <li>Fixed the abnormal time and repetition rules of automated tasks.</li>
+          <li>Fixed the issue where missed one-time tasks were being rescheduled repeatedly.</li>
+          <li>Fixed the issue where automated task cards were displayed inaccurately.</li>
+          <li>Fixed the sorting and folding exceptions of idle tasks.</li>
+          <li>Fixed the issue where browser screenshots in the backend are prone to timeout.</li>
+          <li>Fixed an issue where disabled tools could still be invoked.</li>
+          <li>Fixed the issue where memory was still being processed after the conversation was closed.</li>
+          <li>Fixed search compatibility issues on Windows and macOS.</li>
+          <li>Fixed the abnormal display of Chinese, Japanese and Korean characters in PDF.</li>
+          <li>Fixed issues with image preview drag, close and save functions.</li>
+          <li>Fixed the security issue with remote image download.</li>
+          <li>Fixed the issue where diff preview would not be displayed in rare cases.</li>
+          <li>Fixed the issue where large file previews were not fully displayed.</li>
+          <li>Fixed the issue where compressing directories in the file tree caused incorrect hierarchy.</li>
+          <li>Optimized the find &amp; grep commands in bash.</li>
+          <li>Fixed the issue where the scheduled task control would malfunction after reset.</li>
+          <li>Fixed the issue with cross-platform command pipeline output capture.</li>
+          <li>Fixed the abnormal status issue of browser task tabs in the backend.</li>
+          <li>Fixed the issue where the scroll position jumps when loading historical messages.</li>
+          <li>Fixed the issue where the screen does not refresh after restoring a window from the system tray.</li>
+          <li>Fixed an issue where legacy WSL sessions could not be resumed.</li>
+          <li>Fixed the issue where pressing Enter in code comments failed to send the comment.</li>
+          <li>Fixed the issue where question drafts were lost after task switching.</li>
+          <li>Optimized the loading and failure display of Markdown images.</li>
+          <li>Fixed the compatibility issue with table file preview.</li>
+          <li>Fixed the issue where the old tag numbers in auxiliary conversations were missing.</li>
+          <li>Assistant chat supports opening multiple tabs simultaneously.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.5.3" date="2026-07-27">
       <description>
         <p>Release 3.5.3:</p>
