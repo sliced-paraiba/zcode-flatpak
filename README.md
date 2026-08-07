@@ -34,7 +34,7 @@ flatpak update ai.zcode.ZCode
 | --- | --- |
 | `ai.zcode.ZCode.yaml` | Flatpak manifest. Downloads the upstream `.deb`, unpacks it, installs the Electron tree + icons + desktop entry under `/app`. |
 | `ai.zcode.ZCode.appdata.xml` | AppStream metadata (description, screenshots, release notes). |
-| `.github/workflows/auto-update.yml` | Runs **hourly**. Polls the ZCode website for a new release; when found, rewrites the manifest's URL + `sha256` and the appdata `<releases>` section, then commits — which triggers a rebuild. |
+| `.github/workflows/auto-update.yml` | Runs **hourly**. Probes the ZCode CDN's per-version `latest.yml` files for a new release (the CDN has no directory listing and the website's download table lags behind); when found, rewrites the manifest's URL + `sha256` and the appdata `<releases>` section, then commits — which triggers a rebuild. |
 | `.github/workflows/build.yml` | Builds the flatpak with `flatpak-builder`, exports it into a GitHub-Pages-hosted OSTree repo, and publishes a single-file `.flatpak` bundle as a build artifact. |
 
 ### Runtime

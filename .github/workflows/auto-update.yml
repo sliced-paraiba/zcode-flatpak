@@ -5,9 +5,10 @@ name: Auto-update
 # manifest (URL + sha256) and the appdata <releases> section, then commits —
 # which triggers build.yml to rebuild and republish.
 #
-# ZCode publishes a per-version latest.yml on its CDN; the helper scrapes
-# the website (which embeds every release URL) to find the newest version, then
-# downloads the x86_64 .deb to compute the sha256 that flatpak-builder needs.
+# ZCode publishes a per-version latest.yml on its CDN; the helper probes those
+# (the CDN has no directory listing and the website's download table lags
+# behind the actual releases) to find the newest version, then downloads the
+# x86_64 .deb to compute the sha256 that flatpak-builder needs.
 
 on:
   schedule:
