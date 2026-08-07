@@ -47,6 +47,35 @@
   </categories>
 
   <releases>
+    <release version="3.7.3" date="2026-08-07">
+      <description>
+        <p>Release 3.7.3:</p>
+        <ul>
+          <li>Added support for using `@` to mention plugins, reference files, and reference conversations</li>
+          <li>Added support for subagents with custom models in idle tasks</li>
+          <li>Added the ability to view project memory in Settings</li>
+          <li>Added custom minute intervals for automated tasks</li>
+          <li>Added a reasoning effort setting for subagents</li>
+          <li>Optimized memory usage</li>
+          <li>Preserved in-project file paths when pasting images</li>
+          <li>Fixed image attachment caching issues that caused incorrect previews</li>
+          <li>Fixed incorrect interval, model, and goal displays for automated tasks</li>
+          <li>Improved error messages for Feishu connection failures</li>
+          <li>Fixed browser tab restoration and icon display issues</li>
+          <li>Improved tool-call card status and result presentation</li>
+          <li>Fixed queued messages being sent out of order or prematurely</li>
+          <li>Fixed model selections being lost after switching runtime environments</li>
+          <li>Fixed window corner and shortcut issues on Windows</li>
+          <li>Fixed installation failures after resuming macOS updates</li>
+          <li>Fixed blank or missing conversations when reconnecting to remote workspaces</li>
+          <li>Fixed file previews not refreshing after reverting or changing files</li>
+          <li>Improved the stability of project memory previews</li>
+          <li>Fixed missing files in preview cards</li>
+          <li>Fixed scrolling for long task titles and sidebar tab overflow</li>
+          <li>Fixed subscription plan selection and purchased team plan display issues</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.6.5" date="2026-07-31">
       <description>
         <p>Release 3.6.5:</p>
