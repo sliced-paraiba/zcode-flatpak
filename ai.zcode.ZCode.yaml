@@ -72,17 +72,18 @@ modules:
           # is mounted read-only at /run/host (--filesystem=host-os); we point
           # those at the host's binaries so the user's real tools work.
           #
-          # $SHELL is inherited from the host session by flatpak, so translate
-          # it to the in-sandbox host path and only use it if it actually loads
-          # (host glibc may be newer than the runtime's — GLIBC_xx not found).
-          # Fall back to the runtime's own bash otherwise.
+          # The host shell must NOT be exec'd directly inside the sandbox: the
+          # host glibc (cachyos: 2.42) is newer than the runtime's (~2.41), so
+          # the host ELF fails to load with "GLIBC_xx not found". Instead $SHELL
+          # points at /app/bin/host-shell, a flatpak-spawn wrapper that runs the
+          # host shell in the host namespace (glibc-immune). The host's original
+          # $SHELL value is passed along for it; the wrapper falls back to the
+          # host passwd entry when the desktop session didn't set $SHELL.
           - |
-            HOST_SHELL="/run/host$SHELL"
-            if [ -x "$HOST_SHELL" ] && "$HOST_SHELL" -c 'exit 0' 2>/dev/null; then
-              export SHELL="$HOST_SHELL"
-            else
-              export SHELL=/bin/bash
+            if [ -n "$SHELL" ]; then
+              export ZCODE_HOST_SHELL="$SHELL"
             fi
+            export SHELL=/app/bin/host-shell
           # Prefer the host git when it loads; otherwise /app/bin/git (the
           # flatpak-spawn wrapper) takes over via PATH below.
           - |
@@ -125,6 +126,40 @@ modules:
         EOF
         chmod 755 /app/bin/host-run
         for c in git node python3; do ln -s host-run "/app/bin/$c"; done
+      # Terminal/agent shell: run the user's host shell in the host namespace.
+      # Prefer the host $SHELL value captured by the launcher (ZCODE_HOST_SHELL),
+      # fall back to the host passwd entry (the sandbox sees the host passwd),
+      # and finally to /bin/bash.
+      - |
+        cat > /app/bin/host-shell <<'EOF'
+        #!/bin/sh
+        SHELL_PATH="${ZCODE_HOST_SHELL:-$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)}"
+        SHELL_PATH="${SHELL_PATH:-/bin/bash}"
+        exec flatpak-spawn --host "$SHELL_PATH" "$@"
+        EOF
+        chmod 755 /app/bin/host-shell
+      # MCP servers / arbitrary host tools: nix lives outside /usr/bin on most
+      # setups — NixOS puts it under /run/current-system/sw (which is not even
+      # visible inside the sandbox, since host /run isn't mounted by host-os),
+      # multi-user Nix under /nix/var/..., Determinate Nix under /nix/var/nix/
+      # profiles/default. Probe the common locations from the host side before
+      # falling back to a plain PATH lookup.
+      - |
+        cat > /app/bin/nix <<'EOF'
+        #!/bin/sh
+        for p in /run/current-system/sw/bin/nix \
+                 /etc/profiles/per-user/"$USER"/bin/nix \
+                 /nix/var/nix/profiles/default/bin/nix \
+                 /nix/var/nix/profiles/per-user/"$USER"/profile/bin/nix \
+                 "$HOME/.nix-profile/bin/nix" \
+                 /usr/bin/nix /usr/local/bin/nix; do
+          if flatpak-spawn --host test -x "$p" 2>/dev/null; then
+            exec flatpak-spawn --host "$p" "$@"
+          fi
+        done
+        exec flatpak-spawn --host nix "$@"
+        EOF
+        chmod 755 /app/bin/nix
       # Icons (flatpak caps app icons at 512x512, so skip 1024)
       - |
         for s in 16 24 32 48 64 128 256 512; do

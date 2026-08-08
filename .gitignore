@@ -18,3 +18,6 @@ all-versions.txt
 # Python
 __pycache__/
 *.pyc
+
+# ZCode client session data
+.zcode/
