@@ -80,7 +80,12 @@ Caveats: the host root is read-only (the app can't modify host system files);
 host processes and sockets are still invisible to the sandbox; and a host
 binary that requires a newer glibc than the runtime ships will fail to load if
 it is reached through `/run/host` directly — wrap it with a `flatpak-spawn`
-forwarder (as above) to run it glibc-safely.
+forwarder (as above) to run it glibc-safely. Note that after ZCode's startup
+login-shell env probe, the sandbox `PATH` is replaced by the host's (NixOS
+paths like `/run/current-system/sw/bin` don't exist inside the sandbox) — the
+wrappers use absolute paths (`/usr/bin/flatpak-spawn`, ...) and `git` is
+pinned to `/app/bin/git` via `ZCODE_GIT_BINARY` precisely so they keep working
+under that polluted `PATH`.
 
 ## Limitations / notes
 
