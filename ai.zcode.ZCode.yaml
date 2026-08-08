@@ -77,16 +77,19 @@ modules:
           # those at the host's binaries so the user's real tools work.
           #
           # The host shell must NOT be exec'd directly inside the sandbox: the
-          # host glibc (cachyos: 2.42) is newer than the runtime's (~2.41), so
-          # the host ELF fails to load with "GLIBC_xx not found". Instead $SHELL
-          # points at /app/bin/host-shell, a flatpak-spawn wrapper that runs the
-          # host shell in the host namespace (glibc-immune). The host's original
-          # $SHELL value is passed along for it; the wrapper falls back to the
-          # host passwd entry when the desktop session didn't set $SHELL.
+          # host glibc is newer than the runtime's, so the host ELF fails to
+          # load with "GLIBC_xx not found". Instead $SHELL points at
+          # /app/bin/host-shell, a flatpak-spawn wrapper that runs the host
+          # shell in the host namespace (glibc-immune). The launch
+          # environment's $SHELL is unreliable (often /bin/sh), so probe the
+          # host session's real SHELL via flatpak-spawn and hand it to the
+          # wrapper as ZCODE_HOST_SHELL.
           - |
-            if [ -n "$SHELL" ]; then
-              export ZCODE_HOST_SHELL="$SHELL"
-            fi
+            HOST_SHELL="$(/usr/bin/flatpak-spawn --host sh -c 'printf %s "$SHELL"' 2>/dev/null)"
+            case "$HOST_SHELL" in
+              /bin/sh|/usr/bin/sh|"") ;;
+              *) export ZCODE_HOST_SHELL="$HOST_SHELL" ;;
+            esac
             export SHELL=/app/bin/host-shell
           # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY.
           # Point at the git shipped by the Sdk runtime (glibc-safe, no host
