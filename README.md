@@ -43,6 +43,32 @@ Built against `org.freedesktop.Platform`/`Sdk` **25.08** (latest stable), which
 provides the GTK3, NSS, cups, ALSA, ATK/at-spi and graphics stack that the
 bundled Electron binary links against.
 
+### Host toolchain access
+
+The sandbox mounts the host's root filesystem **read-only** at `/run/host`
+(`--filesystem=host-os`) and bridges common developer tools into the app, so
+the integrated terminal, the agent's bash tool and third-party plugin MCP
+servers can use your real host toolchain:
+
+- **Shell**: `$SHELL` is pointed at your host shell (`/run/host/usr/bin/...`)
+  when it loads inside the runtime. The terminal and agent tools then run your
+  real shell and pick up your `~/.bashrc`/`~/.zshrc` environment (conda, nvm,
+  custom `PATH`, ...). If the host binary can't load (the host glibc may be
+  newer than the runtime's — `GLIBC_xx not found`), it falls back to the
+  runtime's own bash.
+- **git**: used via `ZCODE_GIT_BINARY` when the host git loads, otherwise via
+  the `flatpak-spawn` wrapper.
+- **`git`, `node`, `python3`**: wrapped in `/app/bin` as `flatpak-spawn --host`
+  forwarders that execute the host's binary **in the host namespace** — immune
+  to glibc/library mismatches by construction. Want more? Add a symlink in
+  `build-commands`: `ln -s host-run /app/bin/<cmd>` (requires a rebuild).
+- **Everything else** resolves through `/run/host/usr/bin` via `PATH`.
+
+Caveats: the host root is read-only (the app can't modify host system files);
+host processes and sockets are still invisible to the sandbox; and a host
+binary that requires a newer glibc than the runtime ships will fail to load
+unless it is reached through a `flatpak-spawn` wrapper (add one, as above).
+
 ## Limitations / notes
 
 - **No GPG signing.** The published OSTree repo is unsigned; you add it with

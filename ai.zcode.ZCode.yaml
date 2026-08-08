@@ -41,6 +41,10 @@ finish-args:
   - --talk-name=org.kde.kwalletd6
   # File access: this is a developer tool that edits code, so broad home access is needed.
   - --filesystem=home
+  # Host toolchain bridge: read-only mount of the host root at /run/host so
+  # ZCode's terminal/agent can run host binaries (git, python, node, ...) via
+  # the launcher's SHELL/PATH bridge and the flatpak-spawn wrappers in /app/bin.
+  - --filesystem=host-os
   # ZCode can spawn sub-processes; allow talking to the session portal bus.
   - --talk-name=org.freedesktop.Flatpak
   # Own its well-known name (status notifier item / app indicator)
@@ -62,6 +66,33 @@ modules:
       - type: script
         dest-filename: zcode-launcher
         commands:
+          # --- Host toolchain bridge -------------------------------------------
+          # ZCode's integrated terminal and the agent's bash tool spawn $SHELL,
+          # and git is looked up via $ZCODE_GIT_BINARY or $PATH. The host root
+          # is mounted read-only at /run/host (--filesystem=host-os); we point
+          # those at the host's binaries so the user's real tools work.
+          #
+          # $SHELL is inherited from the host session by flatpak, so translate
+          # it to the in-sandbox host path and only use it if it actually loads
+          # (host glibc may be newer than the runtime's — GLIBC_xx not found).
+          # Fall back to the runtime's own bash otherwise.
+          - |
+            HOST_SHELL="/run/host$SHELL"
+            if [ -x "$HOST_SHELL" ] && "$HOST_SHELL" -c 'exit 0' 2>/dev/null; then
+              export SHELL="$HOST_SHELL"
+            else
+              export SHELL=/bin/bash
+            fi
+          # Prefer the host git when it loads; otherwise /app/bin/git (the
+          # flatpak-spawn wrapper) takes over via PATH below.
+          - |
+            if [ -x /run/host/usr/bin/git ] && /run/host/usr/bin/git --version >/dev/null 2>&1; then
+              export ZCODE_GIT_BINARY=/run/host/usr/bin/git
+            fi
+          # Resolution order: wrappers (/app/bin, host-forwarding) → host
+          # /usr/bin → sandbox runtime. Keeps git/node/python3 glibc-safe while
+          # still exposing every other host command.
+          - export PATH="/app/bin:/run/host/usr/bin:/run/host/bin:$PATH"
           # Electron's bundled chrome-sandbox helper must be setuid-root
           # (mode 4755, owned by root) to work, which is impossible inside a
           # flatpak /app (OSTree forbids setuid binaries there). Since flatpak
@@ -81,6 +112,19 @@ modules:
       - chmod -R a+rX /app/opt/ZCode
       # Launcher wrapper on PATH
       - install -Dm755 zcode-launcher /app/bin/zcode
+      # Host command wrappers: each symlink forwards the same-named command to
+      # the host namespace via flatpak-spawn, so it runs against the host's
+      # glibc/libs (no GLIBC_xx incompatibility with the runtime). Add more
+      # commands by extending the symlink list.
+      - |
+        install -d /app/bin
+        cat > /app/bin/host-run <<'EOF'
+        #!/bin/sh
+        # Run the same-named host command in the host namespace.
+        exec flatpak-spawn --host "$(basename "$0")" "$@"
+        EOF
+        chmod 755 /app/bin/host-run
+        for c in git node python3; do ln -s host-run "/app/bin/$c"; done
       # Icons (flatpak caps app icons at 512x512, so skip 1024)
       - |
         for s in 16 24 32 48 64 128 256 512; do
