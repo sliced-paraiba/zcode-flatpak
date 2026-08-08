@@ -116,10 +116,11 @@ modules:
       - chmod -R a+rX /app/opt/ZCode
       # Launcher wrapper on PATH
       - install -Dm755 zcode-launcher /app/bin/zcode
-      # Host command wrappers: each symlink forwards the same-named command to
-      # the host namespace via flatpak-spawn, so it runs against the host's
-      # glibc/libs (no GLIBC_xx incompatibility with the runtime). Add more
-      # commands by extending the symlink list.
+      # Host command wrapper: the general mechanism to forward a command to
+      # the host namespace via flatpak-spawn. ZCode's direct dependencies
+      # (git/python3 from the Sdk runtime, node embedded in the app) live
+      # inside the sandbox and need no forwarding; add a symlink here only for
+      # optional host tools: ln -s host-run /app/bin/<cmd>.
       - |
         install -d /app/bin
         cat > /app/bin/host-run <<'EOF'
@@ -131,7 +132,6 @@ modules:
         exec /usr/bin/flatpak-spawn --host "${0##*/}" "$@"
         EOF
         chmod 755 /app/bin/host-run
-        for c in node python3; do ln -s host-run "/app/bin/$c"; done
       # Terminal/agent shell: run the user's host shell in the host namespace.
       # Prefer the host $SHELL value captured by the launcher (ZCODE_HOST_SHELL),
       # fall back to the host passwd entry (the sandbox sees the host passwd),

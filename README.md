@@ -61,15 +61,19 @@ servers can use your real host toolchain:
   terminal and the agent's tools running your real shell (`~/.bashrc` /
   `~/.zshrc` environment included) — and is immune to glibc mismatches, since
   the host shell never loads inside the sandbox.
-- **git**: provided by the `org.freedesktop.Sdk` runtime itself (`/usr/bin/git`,
-  glibc-safe, host-independent); ZCode's built-in git integration is pinned to
-  it via `ZCODE_GIT_BINARY`.
-- **`node`, `python3`**: wrapped in `/app/bin` as `flatpak-spawn --host`
-  forwarders that execute the host's binary **in the host namespace** — immune
-  to glibc/library mismatches by construction (python3 also exists inside the
-  runtime, and ZCode runs its own embedded node). Add more commands with a
-  symlink in `build-commands`: `ln -s host-run /app/bin/<cmd>` (requires a
-  rebuild).
+- **git / python3**: provided by the `org.freedesktop.Sdk` runtime
+  (`/usr/bin/git`, `/usr/bin/python3` — glibc-safe, host-independent); ZCode's
+  built-in git integration is pinned to `/usr/bin/git` via
+  `ZCODE_GIT_BINARY`. Node is embedded in the app itself. None of ZCode's
+  direct dependencies need host forwarding.
+- **Optional host tools** (MCP servers, `nix`, ...): use the general
+  `/app/bin/host-run` forwarder — a `flatpak-spawn --host` wrapper that runs
+  the same-named host command in the host namespace (glibc-immune). `nix` is
+  pre-wrapped (`/app/bin/nix`, probing NixOS/`/nix`/`~/.nix-profile`
+  locations); for anything else add a symlink in `build-commands`:
+  `ln -s host-run /app/bin/<cmd>` (requires a rebuild) — or configure
+  `/usr/bin/flatpak-spawn --host ...` directly in your MCP server config
+  (no rebuild needed).
 - **`nix`**: wrapped separately (`/app/bin/nix`) because nix lives outside
   `/usr/bin` on most setups (NixOS: `/run/current-system/sw/bin/nix`, which is
   not even visible inside the sandbox; multi-user/determinate Nix:
