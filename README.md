@@ -57,12 +57,15 @@ servers can use your real host toolchain:
   terminal and the agent's tools running your real shell (`~/.bashrc` /
   `~/.zshrc` environment included) — and is immune to glibc mismatches, since
   the host shell never loads inside the sandbox.
-- **git**: used via `ZCODE_GIT_BINARY` when the host git loads, otherwise via
-  the `flatpak-spawn` wrapper.
-- **`git`, `node`, `python3`**: wrapped in `/app/bin` as `flatpak-spawn --host`
+- **git**: **bundled inside the app** as a flatpak module (`git` module in the
+  manifest, built against the runtime so it is glibc-safe and host-independent).
+  ZCode's built-in git integration is pinned to it via `ZCODE_GIT_BINARY`.
+- **`node`, `python3`**: wrapped in `/app/bin` as `flatpak-spawn --host`
   forwarders that execute the host's binary **in the host namespace** — immune
-  to glibc/library mismatches by construction. Add more commands with a symlink
-  in `build-commands`: `ln -s host-run /app/bin/<cmd>` (requires a rebuild).
+  to glibc/library mismatches by construction (python3 also exists inside the
+  runtime, and ZCode runs its own embedded node). Add more commands with a
+  symlink in `build-commands`: `ln -s host-run /app/bin/<cmd>` (requires a
+  rebuild).
 - **`nix`**: wrapped separately (`/app/bin/nix`) because nix lives outside
   `/usr/bin` on most setups (NixOS: `/run/current-system/sw/bin/nix`, which is
   not even visible inside the sandbox; multi-user/determinate Nix:

@@ -52,6 +52,19 @@ finish-args:
   - --own-name=org.kde.StatusNotifierItem.*
 
 modules:
+  # git for ZCode's built-in git integration: the runtime doesn't ship one,
+  # and bundling it (built against the runtime's glibc/openssl/curl) is
+  # glibc-safe and host-independent — no flatpak-spawn forwarding needed.
+  - name: git
+    buildsystem: autotools
+    config-opts:
+      - --without-tcltk
+      - --without-perl
+      - --with-curl
+    sources:
+      - type: archive
+        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz
+        sha256: 457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357
   - name: zcode
     buildsystem: simple
     sources:
@@ -84,12 +97,10 @@ modules:
               export ZCODE_HOST_SHELL="$SHELL"
             fi
             export SHELL=/app/bin/host-shell
-          # git: ZCode looks it up via $ZCODE_GIT_BINARY or $PATH. Point it at
-          # the wrapper explicitly — after ZCode's login-shell env probe the
-          # sandbox PATH is replaced by the host's, which on NixOS contains
-          # paths (e.g. /run/current-system/sw/bin) that don't exist inside the
-          # sandbox; the /app/bin/git wrapper forwards to the host namespace
-          # instead, so git keeps working regardless of the PATH pollution.
+          # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY. The
+          # app bundles its own git (a flatpak module built against the
+          # runtime, so glibc-safe), point at it directly — immune to the
+          # host-PATH pollution from the login-shell env probe.
           - export ZCODE_GIT_BINARY=/app/bin/git
           # Resolution order: wrappers (/app/bin, host-forwarding) → host
           # /usr/bin → sandbox runtime. Keeps git/node/python3 glibc-safe while
@@ -129,7 +140,7 @@ modules:
         exec /usr/bin/flatpak-spawn --host "${0##*/}" "$@"
         EOF
         chmod 755 /app/bin/host-run
-        for c in git node python3; do ln -s host-run "/app/bin/$c"; done
+        for c in node python3; do ln -s host-run "/app/bin/$c"; done
       # Terminal/agent shell: run the user's host shell in the host namespace.
       # Prefer the host $SHELL value captured by the launcher (ZCODE_HOST_SHELL),
       # fall back to the host passwd entry (the sandbox sees the host passwd),
