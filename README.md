@@ -12,7 +12,7 @@ it can be installed and updated through Flatpak on any Linux distribution.
 
 ```sh
 flatpak remote-add --user --no-gpg-verify zcode \
-    https://sliced-paraiba.github.io/zcode-flatpak/repo
+    https://xiaot-evo.github.io/zcode-flatpak/repo
 flatpak install --user zcode ai.zcode.ZCode
 ```
 

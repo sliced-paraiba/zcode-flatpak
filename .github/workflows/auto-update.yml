@@ -40,8 +40,8 @@ jobs:
       - name: Commit bump
         if: steps.check.outputs.changed == 'true'
         run: |
-          git config user.name "sliced-paraiba"
-          git config user.email "sliced-paraiba@users.noreply.github.com"
+          git config user.name "xiaot-evo"
+          git config user.email "xiaot-evo@users.noreply.github.com"
           git add ai.zcode.ZCode.yaml ai.zcode.ZCode.appdata.xml
           git commit -m "chore: bump ZCode to $(grep -oE 'releases/[0-9.]+' ai.zcode.ZCode.yaml | head -1 | cut -d/ -f2)
 

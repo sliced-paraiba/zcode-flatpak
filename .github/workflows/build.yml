@@ -4,7 +4,7 @@ name: Build & publish
 # users add directly:
 #
 #   flatpak remote-add --user --no-gpg-verify zcode \
-#       https://sliced-paraiba.github.io/zcode-flatpak/repo
+#       https://xiaot-evo.github.io/zcode-flatpak/repo
 #   flatpak install --user zcode ai.zcode.ZCode
 #
 # Triggers on manifest/appdata changes, nightly, and manually.
