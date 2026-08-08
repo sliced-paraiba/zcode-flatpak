@@ -1,6 +1,10 @@
 app-id: ai.zcode.ZCode
 branch: stable
-runtime: org.freedesktop.Platform
+# Use the full SDK as the runtime (like Zed/VS Code flatpaks do): it is a
+# superset of the Platform and ships the developer toolchain — git, git-lfs,
+# python3, gcc, make — that ZCode's built-in git integration and the agent
+# rely on, so they work inside the sandbox with no host forwarding.
+runtime: org.freedesktop.Sdk
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 command: zcode
@@ -52,19 +56,6 @@ finish-args:
   - --own-name=org.kde.StatusNotifierItem.*
 
 modules:
-  # git for ZCode's built-in git integration: the runtime doesn't ship one,
-  # and bundling it (built against the runtime's glibc/openssl/curl) is
-  # glibc-safe and host-independent — no flatpak-spawn forwarding needed.
-  - name: git
-    buildsystem: autotools
-    config-opts:
-      - --without-tcltk
-      - --without-perl
-      - --with-curl
-    sources:
-      - type: archive
-        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz
-        sha256: 457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357
   - name: zcode
     buildsystem: simple
     sources:
@@ -97,11 +88,11 @@ modules:
               export ZCODE_HOST_SHELL="$SHELL"
             fi
             export SHELL=/app/bin/host-shell
-          # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY. The
-          # app bundles its own git (a flatpak module built against the
-          # runtime, so glibc-safe), point at it directly — immune to the
-          # host-PATH pollution from the login-shell env probe.
-          - export ZCODE_GIT_BINARY=/app/bin/git
+          # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY.
+          # Point at the git shipped by the Sdk runtime (glibc-safe, no host
+          # forwarding) — immune to the host-PATH pollution from the
+          # login-shell env probe.
+          - export ZCODE_GIT_BINARY=/usr/bin/git
           # Resolution order: wrappers (/app/bin, host-forwarding) → host
           # /usr/bin → sandbox runtime. Keeps git/node/python3 glibc-safe while
           # still exposing every other host command.

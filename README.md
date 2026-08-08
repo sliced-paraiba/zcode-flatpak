@@ -39,9 +39,13 @@ flatpak update ai.zcode.ZCode
 
 ### Runtime
 
-Built against `org.freedesktop.Platform`/`Sdk` **25.08** (latest stable), which
-provides the GTK3, NSS, cups, ALSA, ATK/at-spi and graphics stack that the
-bundled Electron binary links against.
+Runs on `org.freedesktop.Sdk` **25.08** (the full SDK used as the runtime,
+like the Zed/VS Code flatpaks do). It is a superset of the Platform — same
+GTK3, NSS, cups, ALSA, ATK/at-spi and graphics stack — and additionally ships
+the developer toolchain (`git`, `git-lfs`, `python3`, `gcc`, `make`, ...),
+which ZCode's built-in git integration and the agent can use inside the
+sandbox. Trade-off: the SDK is a larger download (~1.5 GB vs ~1 GB) on first
+install/update.
 
 ### Host toolchain access
 
@@ -57,9 +61,9 @@ servers can use your real host toolchain:
   terminal and the agent's tools running your real shell (`~/.bashrc` /
   `~/.zshrc` environment included) — and is immune to glibc mismatches, since
   the host shell never loads inside the sandbox.
-- **git**: **bundled inside the app** as a flatpak module (`git` module in the
-  manifest, built against the runtime so it is glibc-safe and host-independent).
-  ZCode's built-in git integration is pinned to it via `ZCODE_GIT_BINARY`.
+- **git**: provided by the `org.freedesktop.Sdk` runtime itself (`/usr/bin/git`,
+  glibc-safe, host-independent); ZCode's built-in git integration is pinned to
+  it via `ZCODE_GIT_BINARY`.
 - **`node`, `python3`**: wrapped in `/app/bin` as `flatpak-spawn --host`
   forwarders that execute the host's binary **in the host namespace** — immune
   to glibc/library mismatches by construction (python3 also exists inside the
@@ -103,7 +107,7 @@ under that polluted `PATH`.
 ## Build locally
 
 ```sh
-flatpak install --user flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
+flatpak install --user flathub org.freedesktop.Sdk//25.08
 flatpak-builder --user --install-deps-from=flathub --force-clean \
     --repo=repo build-dir ai.zcode.ZCode.yaml
 flatpak remote-add --user --no-gpg-verify --if-not-exists zcode-local repo
