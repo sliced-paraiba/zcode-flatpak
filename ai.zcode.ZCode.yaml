@@ -1,6 +1,10 @@
 app-id: ai.zcode.ZCode
 branch: stable
-runtime: org.freedesktop.Platform
+# Use the full SDK as the runtime (like Zed/VS Code flatpaks do): it is a
+# superset of the Platform and ships the developer toolchain — git, git-lfs,
+# python3, gcc, make — that ZCode's built-in git integration and the agent
+# rely on, so they work inside the sandbox with no host forwarding.
+runtime: org.freedesktop.Sdk
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 command: zcode
@@ -41,6 +45,10 @@ finish-args:
   - --talk-name=org.kde.kwalletd6
   # File access: this is a developer tool that edits code, so broad home access is needed.
   - --filesystem=home
+  # Host toolchain bridge: read-only mount of the host root at /run/host so
+  # ZCode's terminal/agent can run host binaries (git, python, node, ...) via
+  # the launcher's SHELL/PATH bridge and the flatpak-spawn wrappers in /app/bin.
+  - --filesystem=host-os
   # ZCode can spawn sub-processes; allow talking to the session portal bus.
   - --talk-name=org.freedesktop.Flatpak
   # Own its well-known name (status notifier item / app indicator)
@@ -52,8 +60,8 @@ modules:
     buildsystem: simple
     sources:
       - type: file
-        url: https://cdn-zcode.z.ai/zcode/electron/releases/3.6.5/linux-x64/ZCode-3.6.5-linux-x64.deb
-        sha256: e49803cd8c46cdc0b2ed61e27addfd1fa7cc172ff1ee1b7aeb2a8eb5d8453204
+        url: https://cdn-zcode.z.ai/zcode/electron/releases/3.7.5/linux-x64/ZCode-3.7.5-linux-x64.deb
+        sha256: d3a7a7a07a8512d01c2d4b242644ae673028038f614567a854b940bbdf8da43e
         only-arches:
           - x86_64
         dest-filename: ZCode.deb
@@ -62,6 +70,35 @@ modules:
       - type: script
         dest-filename: zcode-launcher
         commands:
+          # --- Host toolchain bridge -------------------------------------------
+          # ZCode's integrated terminal and the agent's bash tool spawn $SHELL.
+          # The SDK runtime ships /usr/bin/bash, which is glibc-safe inside the
+          # sandbox and gives the agent the full SDK toolchain (git, python3,
+          # gcc, make, ...). No host forwarding needed — keep it simple.
+          #
+          # Git is explicitly pinned to /usr/bin/git (SDK's git) because
+          # ZCode's login-shell env probe replaces the sandbox PATH with the
+          # host PATH, which on NixOS doesn't contain /usr/bin.
+          - export ZCODE_GIT_BINARY=/usr/bin/git
+          # $SHELL defaults to /usr/bin/bash (SDK); no wrapper needed.
+          # Users can set ZCODE_HOST_SHELL in their flatpak override if they
+          # want the terminal to use the host shell:
+          #   flatpak override --user ai.zcode.ZCode --env=ZCODE_HOST_SHELL=/run/current-system/sw/bin/fish
+          - |
+            if [ -n "${ZCODE_HOST_SHELL:-}" ]; then
+              export SHELL="$ZCODE_HOST_SHELL"
+            else
+              export SHELL=/usr/bin/bash
+            fi
+          # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY.
+          # Point at the git shipped by the Sdk runtime (glibc-safe, no host
+          # forwarding) — immune to the host-PATH pollution from the
+          # login-shell env probe.
+          - export ZCODE_GIT_BINARY=/usr/bin/git
+          # Resolution order: wrappers (/app/bin, host-forwarding) → host
+          # /usr/bin → sandbox runtime. Keeps git/node/python3 glibc-safe while
+          # still exposing every other host command.
+          - export PATH="/app/bin:/run/host/usr/bin:/run/host/bin:$PATH"
           # Electron's bundled chrome-sandbox helper must be setuid-root
           # (mode 4755, owned by root) to work, which is impossible inside a
           # flatpak /app (OSTree forbids setuid binaries there). Since flatpak
@@ -81,6 +118,56 @@ modules:
       - chmod -R a+rX /app/opt/ZCode
       # Launcher wrapper on PATH
       - install -Dm755 zcode-launcher /app/bin/zcode
+      # Host command wrapper: the general mechanism to forward a command to
+      # the host namespace via flatpak-spawn. ZCode's direct dependencies
+      # (git/python3 from the Sdk runtime, node embedded in the app) live
+      # inside the sandbox and need no forwarding; add a symlink here only for
+      # optional host tools: ln -s host-run /app/bin/<cmd>.
+      - |
+        install -d /app/bin
+        cat > /app/bin/host-run <<'EOF'
+        #!/bin/sh
+        # Run the same-named host command in the host namespace. Absolute paths
+        # and shell builtins only: after ZCode's login-shell env probe the
+        # sandbox PATH is replaced by the host's, which doesn't contain
+        # /usr/bin or /app/bin.
+        exec /usr/bin/flatpak-spawn --host "${0##*/}" "$@"
+        EOF
+        chmod 755 /app/bin/host-run
+      # Terminal/agent shell: run the user's host shell in the host namespace.
+      # Prefer the host $SHELL value captured by the launcher (ZCODE_HOST_SHELL),
+      # fall back to the host passwd entry (the sandbox sees the host passwd),
+      # and finally to /bin/bash.
+      - |
+        cat > /app/bin/host-shell <<'EOF'
+        #!/bin/sh
+        SHELL_PATH="${ZCODE_HOST_SHELL:-$(/usr/bin/getent passwd "$USER" 2>/dev/null | /usr/bin/cut -d: -f7)}"
+        SHELL_PATH="${SHELL_PATH:-/bin/bash}"
+        exec /usr/bin/flatpak-spawn --host "$SHELL_PATH" "$@"
+        EOF
+        chmod 755 /app/bin/host-shell
+      # MCP servers / arbitrary host tools: nix lives outside /usr/bin on most
+      # setups — NixOS puts it under /run/current-system/sw (which is not even
+      # visible inside the sandbox, since host /run isn't mounted by host-os),
+      # multi-user Nix under /nix/var/..., Determinate Nix under /nix/var/nix/
+      # profiles/default. Probe the common locations from the host side before
+      # falling back to a plain PATH lookup.
+      - |
+        cat > /app/bin/nix <<'EOF'
+        #!/bin/sh
+        for p in /run/current-system/sw/bin/nix \
+                 /etc/profiles/per-user/"$USER"/bin/nix \
+                 /nix/var/nix/profiles/default/bin/nix \
+                 /nix/var/nix/profiles/per-user/"$USER"/profile/bin/nix \
+                 "$HOME/.nix-profile/bin/nix" \
+                 /usr/bin/nix /usr/local/bin/nix; do
+          if /usr/bin/flatpak-spawn --host test -x "$p" 2>/dev/null; then
+            exec /usr/bin/flatpak-spawn --host "$p" "$@"
+          fi
+        done
+        exec /usr/bin/flatpak-spawn --host nix "$@"
+        EOF
+        chmod 755 /app/bin/nix
       # Icons (flatpak caps app icons at 512x512, so skip 1024)
       - |
         for s in 16 24 32 48 64 128 256 512; do

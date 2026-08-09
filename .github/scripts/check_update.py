@@ -6,8 +6,12 @@ Triggered by .github/workflows/auto-update.yml. Exits 0 and prints
 line; prints "version=<v>" when changed.
 
 Strategy:
-  * Scrape https://zcode.z.ai for every "/releases/<x.y.z>/" path embedded in
-    the page and take the highest semver.
+  * The CDN (an OSS bucket) has no directory listing and no global latest.yml
+    pointer, and the marketing site hardcodes its download table (it listed
+    only 3.6.5 while 3.7.x was already out), so walk the version space upward
+    from the version currently pinned in ai.zcode.ZCode.yaml, probing each
+    candidate's per-version linux-x64/latest.yml (~2KB authoritative metadata
+    published by electron-builder for every release) and take the highest hit.
   * Compare against the version currently pinned in ai.zcode.ZCode.yaml.
   * If newer: download the x86_64 .deb, compute sha256, rewrite the manifest's
     url + sha256, and refresh the appdata <releases> section from upstream's
@@ -24,12 +28,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 MANIFEST = ROOT / "ai.zcode.ZCode.yaml"
 APPDATA = ROOT / "ai.zcode.ZCode.appdata.xml"
-HOMEPAGE = "https://zcode.z.ai"
 CDN = "https://cdn-zcode.z.ai/zcode/electron/releases"
 # The marketing site (zcode.z.ai) rejects non-browser User-Agents with an empty
 # body, which used to silently break version detection. The CDN itself doesn't
 # care, but we use the same UA everywhere for simplicity.
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Probing limits for latest_upstream_version(): skip to the next minor after
+# this many consecutive missing patches, and give up after this many entirely
+# empty minors (with one extra probe for a possible major bump, e.g. 4.0.0).
+PATCH_MISS_LIMIT = 8
+EMPTY_MINOR_LIMIT = 2
 
 
 def http(url: str) -> bytes:
@@ -38,15 +47,57 @@ def http(url: str) -> bytes:
         return r.read()
 
 
+def _published(version: str) -> bool:
+    """True if upstream published a linux-x64 release for this version.
+
+    The per-version latest.yml is the authoritative metadata (version,
+    releaseDate, sha512) that electron-builder writes for every release;
+    probing it is far cheaper than HEAD-ing or downloading the .deb.
+    """
+    try:
+        http(f"{CDN}/{version}/linux-x64/latest.yml")
+        return True
+    except Exception:
+        return False
+
+
 def latest_upstream_version() -> str:
-    html = http(HOMEPAGE).decode("utf-8", "replace")
-    versions = set(re.findall(r"/releases/(\d+\.\d+\.\d+)/", html))
-    if not versions:
-        raise SystemExit("No versions found on homepage")
-    # semver-ish sort
-    def key(v: str):
-        return tuple(int(p) for p in v.split("."))
-    return sorted(versions, key=key)[-1]
+    """Probe the CDN for the newest published version (see module docstring)."""
+    mj, mn, pt = (int(p) for p in current_version().split("."))
+    best = (mj, mn, pt)
+    misses = 0        # consecutive misses within the current minor
+    empty_minors = 0  # consecutive minors that yielded no hits
+    while True:
+        version = f"{mj}.{mn}.{pt}"
+        if _published(version):
+            best = (mj, mn, pt)
+            misses = 0
+            empty_minors = 0
+        else:
+            misses += 1
+            if misses >= PATCH_MISS_LIMIT:
+                empty_minors += 1
+                misses = 0
+                pt = 0
+                mn += 1
+                if mn > 99:
+                    mn = 0
+                    mj += 1
+                if empty_minors >= EMPTY_MINOR_LIMIT:
+                    # Only give up after checking whether the major bumped
+                    # (a major release has no preceding minor to probe).
+                    if not _published(f"{mj}.0.0"):
+                        break
+                    empty_minors = 0
+                continue
+        pt += 1
+        if pt > 99:
+            pt = 0
+            mn += 1
+            if mn > 99:
+                mn = 0
+                mj += 1
+    return f"{best[0]}.{best[1]}.{best[2]}"
 
 
 def current_version() -> str:
