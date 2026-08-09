@@ -49,74 +49,49 @@ install/update.
 
 ### Host toolchain access
 
-The sandbox mounts the host's root filesystem **read-only** at `/run/host`
-(`--filesystem=host-os`) and bridges common developer tools into the app, so
-the integrated terminal, the agent's bash tool and third-party plugin MCP
-servers can use your real host toolchain:
+The sandbox runs on `org.freedesktop.Sdk` **25.08**, a superset of the
+Platform that ships the full developer toolchain (`git`, `git-lfs`,
+`python3`, `gcc`, `make`, ...). ZCode's direct dependencies — git, python3,
+node (embedded) — all live inside the sandbox, so no host forwarding is
+needed for the terminal or the agent.
 
-- **Shell**: `$SHELL` points at `/app/bin/host-shell`, a `flatpak-spawn --host`
-  wrapper that starts **your host shell in the host namespace**. It uses the
-  `$SHELL` value captured from the host session (falling back to the host
-  `passwd` entry, e.g. when launched from a desktop menu). This keeps the
-  terminal and the agent's tools running your real shell (`~/.bashrc` /
-  `~/.zshrc` environment included) — and is immune to glibc mismatches, since
-  the host shell never loads inside the sandbox.
-- **git / python3**: provided by the `org.freedesktop.Sdk` runtime
-  (`/usr/bin/git`, `/usr/bin/python3` — glibc-safe, host-independent); ZCode's
-  built-in git integration is pinned to `/usr/bin/git` via
-  `ZCODE_GIT_BINARY`. Node is embedded in the app itself. None of ZCode's
-  direct dependencies need host forwarding.
-- **Optional host tools** (MCP servers, `nix`, ...): use the general
-  `/app/bin/host-run` forwarder — a `flatpak-spawn --host` wrapper that runs
-  the same-named host command in the host namespace (glibc-immune). `nix` is
-  pre-wrapped (`/app/bin/nix`, probing NixOS/`/nix`/`~/.nix-profile`
-  locations); for anything else add a symlink in `build-commands`:
-  `ln -s host-run /app/bin/<cmd>` (requires a rebuild) — or configure
-  `/usr/bin/flatpak-spawn --host ...` directly in your MCP server config
-  (no rebuild needed).
-- **`nix`**: wrapped separately (`/app/bin/nix`) because nix lives outside
-  `/usr/bin` on most setups (NixOS: `/run/current-system/sw/bin/nix`, which is
-  not even visible inside the sandbox; multi-user/determinate Nix:
-  `/nix/var/...`). The wrapper probes the common locations on the host side.
-  Use it for MCP servers that run via `nix run ...`.
-- **Everything else** resolves through `/run/host/usr/bin` via `PATH`. Note
-  that this path only exists on distros with a real `/usr` (Arch, Debian, ...);
-  on NixOS host commands are invisible in the sandbox and **must** go through
-  a `flatpak-spawn` wrapper (`ln -s host-run /app/bin/<cmd>` + rebuild).
-  The host `PATH` still reaches the wrappers: ZCode's startup login-shell
-  probe (`$SHELL -ilc env -0` through `host-shell`) pulls the host environment
-  into the app, and `flatpak-spawn --host` resolves commands against it.
+**Terminal / agent**: `$SHELL` defaults to `/usr/bin/bash` (SDK's bash,
+glibc-safe, immune to the PATH pollution from ZCode's startup env probe).
+The integrated terminal and the agent's bash tool run this SDK bash, with
+full access to all SDK tools.
 
-Caveats: the host root is read-only (the app can't modify host system files);
-host processes and sockets are still invisible to the sandbox; and a host
-binary that requires a newer glibc than the runtime ships will fail to load if
-it is reached through `/run/host` directly — wrap it with a `flatpak-spawn`
-forwarder (as above) to run it glibc-safely. Note that after ZCode's startup
-login-shell env probe, the sandbox `PATH` is replaced by the host's (NixOS
-paths like `/run/current-system/sw/bin` don't exist inside the sandbox) — the
-wrappers use absolute paths (`/usr/bin/flatpak-spawn`, ...) and `git` is
-pinned to `/app/bin/git` via `ZCODE_GIT_BINARY` precisely so they keep working
-under that polluted `PATH`.
-
-## Limitations / notes
-
-- **No GPG signing.** The published OSTree repo is unsigned; you add it with
-  `--no-gpg-verify` as shown above. This is the trade-off for avoiding the
-  Flathub review process. If you want verified updates, clone and build locally.
-- **Unofficial.** ZCode is © Z.ai. This packaging is a community convenience
-  and is not affiliated with or endorsed by Z.ai. Upstream issues belong on the
-  ZCode site / beta group, not here.
-- **x86_64 only** for now (matching the upstream Linux release).
-
-## Build locally
+**Optional: host shell override**. If you want the terminal to use your host
+shell (e.g. fish on NixOS) instead of the SDK bash, set the
+`ZCODE_HOST_SHELL` env var via `flatpak override`:
 
 ```sh
-flatpak install --user flathub org.freedesktop.Sdk//25.08
-flatpak-builder --user --install-deps-from=flathub --force-clean \
-    --repo=repo build-dir ai.zcode.ZCode.yaml
-flatpak remote-add --user --no-gpg-verify --if-not-exists zcode-local repo
-flatpak install --user zcode-local ai.zcode.ZCode
+flatpak override --user ai.zcode.ZCode \
+    --env=ZCODE_HOST_SHELL=/run/current-system/sw/bin/fish
 ```
+
+The launcher detects this and uses your host shell via the `host-shell`
+wrapper (which runs it in the host namespace via `flatpak-spawn --host`).
+Otherwise it stays on the reliable SDK bash.
+
+**MCP servers**: configure them with `/usr/bin/flatpak-spawn --host <cmd>`
+directly in your MCP config (no rebuild needed). The bundled
+`/app/bin/nix` wrapper probes NixOS-common locations (`/run/current-system/sw`,
+`/nix`, `~/.nix-profile`) on the host side.
+
+**Optional host tool wrapper**: `/app/bin/host-run` forwards any same-named
+command to the host namespace via `flatpak-spawn --host`. Add more commands
+with a symlink (requires rebuild):
+
+```sh
+# in build-commands:
+ln -s host-run /app/bin/<cmd>
+```
+
+Caveats: the sandbox mounts the host root read-only at `/run/host`
+(`--filesystem=host-os`) but you don't need it for the default case — the
+SDK bash has everything ZCode needs. Host processes and sockets remain
+invisible to the sandbox; a host binary with a newer glibc will still fail
+if reached directly (use the wrapper for those).
 
 ---
 

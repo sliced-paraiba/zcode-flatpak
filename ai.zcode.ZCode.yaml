@@ -71,26 +71,25 @@ modules:
         dest-filename: zcode-launcher
         commands:
           # --- Host toolchain bridge -------------------------------------------
-          # ZCode's integrated terminal and the agent's bash tool spawn $SHELL,
-          # and git is looked up via $ZCODE_GIT_BINARY or $PATH. The host root
-          # is mounted read-only at /run/host (--filesystem=host-os); we point
-          # those at the host's binaries so the user's real tools work.
+          # ZCode's integrated terminal and the agent's bash tool spawn $SHELL.
+          # The SDK runtime ships /usr/bin/bash, which is glibc-safe inside the
+          # sandbox and gives the agent the full SDK toolchain (git, python3,
+          # gcc, make, ...). No host forwarding needed — keep it simple.
           #
-          # The host shell must NOT be exec'd directly inside the sandbox: the
-          # host glibc is newer than the runtime's, so the host ELF fails to
-          # load with "GLIBC_xx not found". Instead $SHELL points at
-          # /app/bin/host-shell, a flatpak-spawn wrapper that runs the host
-          # shell in the host namespace (glibc-immune). The launch
-          # environment's $SHELL is unreliable (often /bin/sh), so probe the
-          # host session's real SHELL via flatpak-spawn and hand it to the
-          # wrapper as ZCODE_HOST_SHELL.
+          # Git is explicitly pinned to /usr/bin/git (SDK's git) because
+          # ZCode's login-shell env probe replaces the sandbox PATH with the
+          # host PATH, which on NixOS doesn't contain /usr/bin.
+          - export ZCODE_GIT_BINARY=/usr/bin/git
+          # $SHELL defaults to /usr/bin/bash (SDK); no wrapper needed.
+          # Users can set ZCODE_HOST_SHELL in their flatpak override if they
+          # want the terminal to use the host shell:
+          #   flatpak override --user ai.zcode.ZCode --env=ZCODE_HOST_SHELL=/run/current-system/sw/bin/fish
           - |
-            HOST_SHELL="$(/usr/bin/flatpak-spawn --host sh -c 'printf %s "$SHELL"' 2>/dev/null)"
-            case "$HOST_SHELL" in
-              /bin/sh|/usr/bin/sh|"") ;;
-              *) export ZCODE_HOST_SHELL="$HOST_SHELL" ;;
-            esac
-            export SHELL=/app/bin/host-shell
+            if [ -n "${ZCODE_HOST_SHELL:-}" ]; then
+              export SHELL="$ZCODE_HOST_SHELL"
+            else
+              export SHELL=/usr/bin/bash
+            fi
           # git: ZCode's built-in git integration uses $ZCODE_GIT_BINARY.
           # Point at the git shipped by the Sdk runtime (glibc-safe, no host
           # forwarding) — immune to the host-PATH pollution from the
