@@ -60,8 +60,8 @@ modules:
     buildsystem: simple
     sources:
       - type: file
-        url: https://cdn-zcode.z.ai/zcode/electron/releases/3.7.4/linux-x64/ZCode-3.7.4-linux-x64.deb
-        sha256: 639d473640aaa47fef5e4b6663f9739c7e4761a7d8cd706a5811397b564f1c3a
+        url: https://cdn-zcode.z.ai/zcode/electron/releases/3.7.5/linux-x64/ZCode-3.7.5-linux-x64.deb
+        sha256: d3a7a7a07a8512d01c2d4b242644ae673028038f614567a854b940bbdf8da43e
         only-arches:
           - x86_64
         dest-filename: ZCode.deb
