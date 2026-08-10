@@ -47,6 +47,30 @@
   </categories>
 
   <releases>
+    <release version="3.7.5" date="2026-08-09">
+      <description>
+        <p>Release 3.7.5:</p>
+        <ul>
+          <li>Memory now supports browsing by project and viewing project memories in Settings.</li>
+          <li>The task workspace now supports grouped task sections.</li>
+          <li>@ mentions now support plugins, files, and conversations.</li>
+          <li>Idle tasks now support subagents configured with custom models.</li>
+          <li>Automation tasks now support custom minute-based intervals.</li>
+          <li>Subagents now support a reasoning effort setting.</li>
+          <li>Improved memory navigation, icons, actions, and preview stability.</li>
+          <li>Fixed conversation jump positioning after history changes.</li>
+          <li>Fixed preview and positioning issues when dragging grouped project tasks.</li>
+          <li>Improved layout stability for conversations, status panels, long task titles, and side tabs across window sizes.</li>
+          <li>Improved readability for search history, timestamps, working duration, and helper text.</li>
+          <li>Improved document, presentation, and file preview rendering and refresh behavior.</li>
+          <li>Fixed preview issues caused by cached image attachments.</li>
+          <li>Fixed incorrect automation task model and target display.</li>
+          <li>Fixed queued messages that could be reordered or sent too early.</li>
+          <li>Fixed model selection loss after switching runtime environments.</li>
+          <li>Fixed blank or missing conversations after reconnecting to remote workspaces.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.6.5" date="2026-07-31">
       <description>
         <p>Release 3.6.5:</p>
