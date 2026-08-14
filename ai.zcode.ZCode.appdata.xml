@@ -47,6 +47,17 @@
   </categories>
 
   <releases>
+    <release version="3.7.7" date="2026-08-14">
+      <description>
+        <p>Release 3.7.7:</p>
+        <ul>
+          <li>Updated the built-in documentation plugin.</li>
+          <li>Fixed an issue where reasoning effort did not take effect in some automated tasks.</li>
+          <li>Fixed an issue where repository knowledge base generation could not use reasoning effort.</li>
+          <li>Fixed an issue where automatic git commit message generation failed due to missing reasoning effort.</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.7.6" date="2026-08-10">
       <description>
         <p>Release 3.7.6:</p>
