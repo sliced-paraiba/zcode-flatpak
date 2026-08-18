@@ -47,6 +47,36 @@
   </categories>
 
   <releases>
+    <release version="3.8.1" date="2026-08-18">
+      <description>
+        <p>Release 3.8.1:</p>
+        <ul>
+          <li>Support global and workspace-level management of agent capabilities, with visual management in Settings</li>
+          <li>Add recommended prompts on the home page, with support for referencing enabled plugins</li>
+          <li>Add a 5-hour quota reset benefit during off-peak compute hours for GLM Coding Plan subscribers</li>
+          <li>Upgrade usage statistics to support Personal Plan V3 and Team Plan usage tracking</li>
+          <li>Add retry failure pages and custom timeout support for the project knowledge base</li>
+          <li>Improve file references, code comments, and tool call grouping in conversations</li>
+          <li>Add video recording support to the built-in browser</li>
+          <li>Automatically preview generated presentations and refresh previews after edits</li>
+          <li>Support secure workspace-level Hooks configuration and execution</li>
+          <li>Upgrade the built-in document plugin</li>
+          <li>Improve stability for project knowledge base generation, retry, and failure recovery</li>
+          <li>Fix built-in browser startup failures, crashes, and leftover tabs</li>
+          <li>Fix side terminal interruptions or input failures after switching workspaces</li>
+          <li>Fix Windows IME input issues in the side terminal</li>
+          <li>Fix white flashes when refreshing the task list and abnormal file tree scrolling</li>
+          <li>Fix references disappearing after typing spaces following plugin trial usage</li>
+          <li>Fix service status not updating correctly after refreshing the Settings page</li>
+          <li>Fix occasional failure to save window size when exiting the app</li>
+          <li>Fix duplicate usage counting, chart clipping, and display issues in usage statistics</li>
+          <li>Fix external link right-click open behavior and multiple Chinese/English display issues</li>
+          <li>Fix code review comment positioning and preview status issues</li>
+          <li>Optimize startup loading speed for very large conversation histories</li>
+          <li>Fix delayed remaining usage updates</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.7.7" date="2026-08-14">
       <description>
         <p>Release 3.7.7:</p>
