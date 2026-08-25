@@ -47,6 +47,17 @@
   </categories>
 
   <releases>
+    <release version="3.9.1" date="2026-08-23">
+      <description>
+        <p>Release 3.9.1:</p>
+        <ul>
+          <li>Optimize the model configuration options page</li>
+          <li>By default, the thinking process and real-time time consumption are displayed</li>
+          <li>Fixed the issue where screenshots and web tool images could not be displayed in some gateways</li>
+          <li>Fixed the issue where single-colon file references could not be recognized</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.8.1" date="2026-08-18">
       <description>
         <p>Release 3.8.1:</p>
