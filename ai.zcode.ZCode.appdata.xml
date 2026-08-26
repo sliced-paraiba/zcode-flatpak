@@ -47,6 +47,16 @@
   </categories>
 
   <releases>
+    <release version="3.9.2" date="2026-08-26">
+      <description>
+        <p>Release 3.9.2:</p>
+        <ul>
+          <li>使用电脑控制功能前会明确提示所需权限。</li>
+          <li>电脑控制功能支持 macOS Intel 芯片机型使用。</li>
+          <li>浏览器操作时会优先复用已有标签页。</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.9.1" date="2026-08-23">
       <description>
         <p>Release 3.9.1:</p>
