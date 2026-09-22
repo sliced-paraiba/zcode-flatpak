@@ -47,14 +47,6 @@
   </categories>
 
   <releases>
-    <release version="3.14.1" date="2026-09-20">
-      <description>
-        <p>Release 3.14.1:</p>
-        <ul>
-          <li>(see upstream release notes)</li>
-        </ul>
-      </description>
-    </release>
     <release version="3.14.0" date="2026-09-19">
       <description>
         <p>Release 3.14.0:</p>
@@ -63,7 +55,14 @@
         </ul>
       </description>
     </release>
-    <release version="3.12.3" date="2026-09-16">
+    <release version="3.14.1" date="2026-09-20">
+      <description>
+        <p>Release 3.14.1:</p>
+        <ul>
+          <li>(see upstream release notes)</li>
+        </ul>
+      </description>
+    </release>    <release version="3.12.3" date="2026-09-16">
       <description>
         <p>Release 3.12.3:</p>
         <ul>
